@@ -1,0 +1,41 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.2.0, pluggy-1.7.0 -- D:\5curse\software_arch\FitShed\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\5curse\software_arch\FitShed\backend
+configfile: pyproject.toml
+testpaths: tests
+collecting ... collected 31 items
+
+tests/test_group_class.py::test_new_class_is_scheduled_and_empty PASSED  [  3%]
+tests/test_group_class.py::test_class_without_title_is_rejected PASSED   [  6%]
+tests/test_group_class.py::test_booking_adds_client_and_records_event PASSED [  9%]
+tests/test_group_class.py::test_when_class_is_full_client_goes_to_waitlist PASSED [ 12%]
+tests/test_group_class.py::test_capacity_cannot_be_reduced_below_booked_clients PASSED [ 16%]
+tests/test_group_class.py::test_increasing_capacity_promotes_from_waitlist PASSED [ 19%]
+tests/test_group_class.py::test_same_client_cannot_book_twice PASSED     [ 22%]
+tests/test_group_class.py::test_client_from_waitlist_cannot_book_again PASSED [ 25%]
+tests/test_group_class.py::test_cancelling_booking_promotes_first_from_waitlist PASSED [ 29%]
+tests/test_group_class.py::test_cancellation_less_than_3_hours_before_start_is_late PASSED [ 32%]
+tests/test_group_class.py::test_scheduled_class_can_be_cancelled_and_clients_are_listed PASSED [ 35%]
+tests/test_group_class.py::test_cancelled_class_cannot_be_completed PASSED [ 38%]
+tests/test_group_class.py::test_completed_class_cannot_be_cancelled PASSED [ 41%]
+tests/test_group_class.py::test_class_cannot_be_completed_before_it_ends PASSED [ 45%]
+tests/test_group_class.py::test_cannot_book_cancelled_class PASSED       [ 48%]
+tests/test_group_class.py::test_cannot_book_after_class_has_started PASSED [ 51%]
+tests/test_group_class.py::test_failed_operation_does_not_record_event PASSED [ 54%]
+tests/test_repository.py::test_saved_class_can_be_loaded PASSED          [ 58%]
+tests/test_repository.py::test_changes_are_not_stored_until_save PASSED  [ 61%]
+tests/test_repository.py::test_loading_unknown_class_raises PASSED       [ 64%]
+tests/test_repository.py::test_booking_service_works_through_port PASSED [ 67%]
+tests/test_repository.py::test_domain_package_does_not_import_infrastructure PASSED [ 70%]
+tests/test_value_objects.py::test_time_slot_is_created_when_end_is_after_start PASSED [ 74%]
+tests/test_value_objects.py::test_time_slot_rejects_end_not_after_start[end0] PASSED [ 77%]
+tests/test_value_objects.py::test_time_slot_rejects_end_not_after_start[end1] PASSED [ 80%]
+tests/test_value_objects.py::test_time_slot_rejects_too_long_class PASSED [ 83%]
+tests/test_value_objects.py::test_value_objects_are_equal_by_value PASSED [ 87%]
+tests/test_value_objects.py::test_capacity_rejects_invalid_number_of_places[0] PASSED [ 90%]
+tests/test_value_objects.py::test_capacity_rejects_invalid_number_of_places[-5] PASSED [ 93%]
+tests/test_value_objects.py::test_capacity_rejects_invalid_number_of_places[41] PASSED [ 96%]
+tests/test_value_objects.py::test_client_id_cannot_be_empty PASSED       [100%]
+
+============================= 31 passed in 0.08s ==============================

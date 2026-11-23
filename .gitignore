@@ -1,4 +1,29 @@
-answers.md 
+# Відповіді на контрольні запитання
+answers.md
+
 # Службові файли Structurizr
 docs/architecture/.structurizr/
 docs/architecture/workspace.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Змінні оточення з паролями (знадобиться в наступних роботах)
+.env
+.env.*
+!.env.example
+
+# Редактори та системні файли
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log

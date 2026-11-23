@@ -1,0 +1,55 @@
+%% Модель агрегату «Групове заняття» (контекст «Розклад і запис»)
+classDiagram
+  direction TB
+  class GroupClass {
+    <<Aggregate Root>>
+    id
+    title
+    trainer_id
+    status : SCHEDULED | CANCELLED | COMPLETED
+    booked : list~ClientId~
+    waitlist : list~ClientId~
+    book(client, now)
+    cancel_booking(client, now)
+    change_capacity(capacity, now)
+    cancel(reason, now)
+    complete(now)
+    pull_events()
+  }
+  class TimeSlot {
+    <<Value Object>>
+    start
+    end
+  }
+  class Capacity {
+    <<Value Object>>
+    value : 1..40
+  }
+  class ClientId {
+    <<Value Object>>
+    value
+  }
+  class DomainEvent {
+    <<Domain Event>>
+    class_id
+    occurred_at
+    ClientBooked()
+    ClientAddedToWaitlist()
+    BookingCancelled()
+    ClientPromotedFromWaitlist()
+    GroupClassCancelled()
+  }
+  class GroupClassRepository {
+    <<Port>>
+    get(class_id)
+    save(group_class)
+  }
+  class InMemoryGroupClassRepository {
+    <<Adapter>>
+  }
+  GroupClass *-- TimeSlot
+  GroupClass *-- Capacity
+  GroupClass o-- ClientId
+  GroupClass ..> DomainEvent : створює
+  GroupClassRepository <|.. InMemoryGroupClassRepository
+  GroupClassRepository ..> GroupClass : зберігає

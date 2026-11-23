@@ -1,0 +1,13 @@
+[project]
+name = "fitshed"
+version = "0.2.0"
+description = "FitShed: розклад і онлайн-запис для фітнес-центру"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-v"

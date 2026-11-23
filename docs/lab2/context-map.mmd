@@ -1,0 +1,28 @@
+%% Карта обмежених контекстів FitShed
+flowchart LR
+  subgraph core ["Основний піддомен"]
+    booking["<b>Розклад і запис</b><br/>[обмежений контекст]<br/>Заняття, місця, записи,<br/>лист очікування"]
+  end
+  subgraph support ["Допоміжний піддомен"]
+    memberships["<b>Абонементи</b><br/>[обмежений контекст]<br/>Абонементи, списання й повернення<br/>відвідувань, оплата"]
+  end
+  subgraph generic ["Загальний піддомен"]
+    notifications["<b>Сповіщення</b><br/>[обмежений контекст]<br/>Шаблони, канали,<br/>журнал доставки"]
+  end
+
+  pay["Платіжний сервіс<br/>[зовнішня система]"]
+  notify["Сервіс повідомлень<br/>[зовнішня система]"]
+
+  memberships -- "Customer / Supplier<br/>перевірка: чи діє абонемент" --> booking
+  booking -- "Доменні події (Published Language)<br/>ClientBooked, BookingCancelled" --> memberships
+  booking -- "Доменні події (Published Language)<br/>GroupClassCancelled, ClientPromotedFromWaitlist" --> notifications
+  memberships -- "Anti-Corruption Layer" --> pay
+  notifications -- "Anti-Corruption Layer" --> notify
+
+  classDef ctx fill:#1f7a72,stroke:#0b4f4a,color:#ffffff
+  classDef ext fill:#6b8f8b,stroke:#3f615d,color:#ffffff
+  class booking,memberships,notifications ctx
+  class pay,notify ext
+  style core fill:#e3f2ef,stroke:#0b4f4a,color:#0b4f4a
+  style support fill:#eef5f4,stroke:#4f9d94,color:#0b4f4a
+  style generic fill:#f5f7f7,stroke:#6b8f8b,color:#0b4f4a
