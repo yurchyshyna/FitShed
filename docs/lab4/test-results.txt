@@ -1,0 +1,8 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.2.0, pluggy-1.7.0
+rootdir: D:\5curse\software_arch\FitShed
+collected 9 items
+
+evaluation\test_mcda.py .........                                        [100%]
+
+============================== 9 passed in 0.05s ==============================

@@ -5,6 +5,7 @@
 | №1 | Вимоги, архітектурні стилі та C4 | цей README, `docs/architecture`, `docs/adr` |
 | №2 | DDD і доменне ядро з портами й адаптерами | [`docs/lab2/README.md`](docs/lab2/README.md), `backend/` |
 | №3 | Взаємодія компонентів і узгодженість даних. Патерн Saga | [`docs/lab3/README.md`](docs/lab3/README.md), `backend/src/fitshed/saga/` |
+| №4 | Оцінювання архітектури та багатометриковий вибір конфігурації | [`docs/lab4/README.md`](docs/lab4/README.md), `evaluation/` |
  
 ## Структура репозиторію
  
@@ -15,9 +16,12 @@
 | `docs/architecture/exports/` | Експорт діаграм у PNG |
 | `docs/adr/ADR-001-modular-monolith.md` | Рішення про архітектурний стиль (уточнене в ЛР2)|
 | `docs/adr/ADR-002-booking-saga.md` | Рішення про оркестровану Saga для запису з абонементом (ЛР 3) |
+| `docs/adr/ADR-003-deployment.md` | Підсумкове рішення про розміщення системи (ЛР 4) |
 | `docs/lab2/` | Карта контекстів, доменна модель, словник, результати тестів (ЛР 2) |
 | `docs/lab3/` | Контракти, діаграма послідовності, результати перевірок Saga (ЛР 3) | 
+| `docs/lab4/` | Аналіз ризиків, таблиці оцінок, вигоди й витрати (ЛР 4) |
 | `backend/` | Доменне ядро, Saga та тести (ЛР 2–3) |
+| `evaluation/` | Дані альтернатив, ваги, скрипт розрахунку та його тести (ЛР 4) |
  
 Діаграми описано як код у Structurizr DSL. Обидві діаграми (System Context і Container) будуються з однієї моделі, тому не можуть розійтися між собою.
  
@@ -29,6 +33,15 @@ docker run -it --rm -p 8080:8080 -v ${PWD}/docs/architecture:/usr/local/structur
  
 і відкрити `http://localhost:8080`. Подвійний клік по FitShed на діаграмі контексту відкриває діаграму контейнерів. PNG у папці `exports` експортовано зі Structurizr.
 
+### Запуск тестів (ЛР 2–3)
+
+```
+cd backend
+python -m venv .venv
+.venv\Scripts\activate        # Windows; на Linux/macOS: source .venv/bin/activate
+pip install pytest
+python -m pytest
+```
 
 ### Демонстрація Saga (ЛР 3)   
 
@@ -38,6 +51,14 @@ python -m fitshed.saga.demo
 ```
 
 Скрипт виконує чотири перевірки й для кожної виводить початковий стан, журнал, кінцевий стан і результат автоматичної перевірки.
+
+### Багатометрикове оцінювання (ЛР 4)
+
+```
+python evaluation/mcda.py --save docs/lab4/results.md
+python -m pytest evaluation
+```
+
  
 ---
  

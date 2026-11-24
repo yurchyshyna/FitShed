@@ -1,0 +1,18 @@
+{
+  "criteria": {
+    "cost":        {"name": "Витрати на інфраструктуру", "unit": "ум. од./міс", "direction": "min", "origin": "синтетичне"},
+    "rto":         {"name": "Час відновлення після відмови сервера (RTO)", "unit": "хв", "direction": "min", "origin": "синтетичне (припущення)"},
+    "maintenance": {"name": "Складність супроводу", "unit": "бали 1–5", "direction": "min", "origin": "експертна оцінка автора"},
+    "capacity":    {"name": "Запас масштабування", "unit": "одночасних користувачів", "direction": "max", "origin": "синтетичне"}
+  },
+  "weight_sets": {
+    "W1": {
+      "title": "Поточний етап: один клуб, один розробник",
+      "weights": {"cost": 0.40, "rto": 0.15, "maintenance": 0.35, "capacity": 0.10}
+    },
+    "W2": {
+      "title": "Мережа клубів: пріоритет надійності й росту",
+      "weights": {"cost": 0.15, "rto": 0.40, "maintenance": 0.15, "capacity": 0.30}
+    }
+  }
+}

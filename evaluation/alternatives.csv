@@ -1,0 +1,4 @@
+id,name,cost,rto,maintenance,capacity
+A,Одна VM: усі контейнери в Docker Compose,25,60,1,150
+B,VM для застосунку + керована PostgreSQL,55,15,2,300
+C,Керований Kubernetes + керована PostgreSQL,140,5,5,2000
