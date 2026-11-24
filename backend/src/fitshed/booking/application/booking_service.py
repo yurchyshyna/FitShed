@@ -27,6 +27,10 @@ class BookingService:
         group_class = GroupClass(class_id, title, trainer_id, TimeSlot(start, end), Capacity(places))
         self._repo.save(group_class)
 
+    def get_class(self, class_id: str) -> GroupClass:
+        """Читання заняття (додано в ЛР 5 для HTTP API)."""
+        return self._repo.get(class_id)
+
     def book(self, class_id: str, client_id: str) -> list[DomainEvent]:
         group_class = self._repo.get(class_id)
         group_class.book(ClientId(client_id), self._clock())

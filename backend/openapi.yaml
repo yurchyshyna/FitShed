@@ -1,0 +1,237 @@
+openapi: 3.1.1
+info:
+  title: FitShed Booking API
+  version: 1.0.0
+  description: |
+    HTTP API контексту «Розклад і запис» (ЛР 5).
+    Ресурс — групове заняття. Власник даних — модуль booking; інші компоненти
+    змінюють заняття лише через цей контракт, а не через його сховище.
+
+    Час у форматі ISO 8601 без часового поясу (локальний час клубу).
+servers:
+  - url: http://127.0.0.1:8000
+    description: Локальний сервер для лабораторної роботи
+
+paths:
+  /classes:
+    post:
+      operationId: createClass
+      summary: Створити групове заняття
+      description: |
+        Метод POST, бо ідентифікатор нового заняття призначає сервер.
+        201 Created — заняття створено одразу й повністю; адреса нового ресурсу в заголовку Location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewClass' }
+            examples:
+              pilates:
+                value:
+                  title: Пілатес
+                  trainer_id: trainer-olena
+                  start: '2026-12-02T10:00:00'
+                  end: '2026-12-02T11:00:00'
+                  capacity: 3
+      responses:
+        '201':
+          description: Заняття створено
+          headers:
+            Location:
+              description: Адреса створеного заняття
+              schema: { type: string, example: /classes/cls-1a2b3c4d }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupClass' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /classes/{class_id}:
+    parameters:
+      - $ref: '#/components/parameters/ClassId'
+    get:
+      operationId: getClass
+      summary: Отримати заняття з поточним станом
+      description: Метод GET — безпечне читання без зміни стану. 200 OK з представленням ресурсу.
+      responses:
+        '200':
+          description: Поточний стан заняття
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupClass' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /classes/{class_id}/bookings:
+    parameters:
+      - $ref: '#/components/parameters/ClassId'
+    post:
+      operationId: bookClass
+      summary: Записати клієнта на заняття
+      description: |
+        Метод POST, бо кожен виклик створює новий запис (неідемпотентна дія).
+        201 Created — запис уже створено синхронно: клієнт або займає місце (result = booked),
+        або потрапляє в лист очікування (result = waitlisted).
+        409 Conflict — клієнт уже записаний, заняття скасоване, завершене чи вже почалося.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewBooking' }
+            examples:
+              anna: { value: { client_id: anna } }
+      responses:
+        '201':
+          description: Запис створено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /classes/{class_id}/cancellation:
+    parameters:
+      - $ref: '#/components/parameters/ClassId'
+    post:
+      operationId: cancelClass
+      summary: Скасувати заняття (перехід стану scheduled → cancelled)
+      description: |
+        Метод POST до підресурсу «скасування», а не PATCH поля status:
+        клієнт не може записати довільний стан, дозволено лише бізнес-дію «скасувати»,
+        а дозволеність переходу перевіряє доменне ядро.
+        200 OK — стан змінено синхронно, у відповіді оновлене заняття.
+        Сповіщення записаним клієнтам надсилаються пізніше воркером і цією відповіддю не гарантуються.
+        409 Conflict — заняття вже скасоване або завершене.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Cancellation' }
+            examples:
+              sick: { value: { reason: Тренер захворів } }
+      responses:
+        '200':
+          description: Заняття скасовано
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupClass' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+components:
+  parameters:
+    ClassId:
+      name: class_id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64, example: cls-1a2b3c4d }
+
+  schemas:
+    NewClass:
+      type: object
+      additionalProperties: false
+      required: [title, trainer_id, start, end, capacity]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        trainer_id: { type: string, minLength: 1, maxLength: 64 }
+        start: { type: string, format: date-time, description: Початок заняття }
+        end: { type: string, format: date-time, description: Кінець; пізніше за start, тривалість до 3 год }
+        capacity: { type: integer, minimum: 1, maximum: 40 }
+
+    GroupClass:
+      type: object
+      required: [class_id, title, trainer_id, start, end, capacity, free_places, status, booked, waitlist]
+      properties:
+        class_id: { type: string, example: cls-1a2b3c4d }
+        title: { type: string, example: Пілатес }
+        trainer_id: { type: string, example: trainer-olena }
+        start: { type: string, format: date-time, example: '2026-12-02T10:00:00' }
+        end: { type: string, format: date-time, example: '2026-12-02T11:00:00' }
+        capacity: { type: integer, minimum: 1, maximum: 40, example: 3 }
+        free_places: { type: integer, minimum: 0, example: 2 }
+        status:
+          type: string
+          enum: [scheduled, cancelled, completed]
+          example: scheduled
+        booked:
+          type: array
+          items: { type: string }
+          example: [anna]
+        waitlist:
+          type: array
+          items: { type: string }
+          example: []
+
+    NewBooking:
+      type: object
+      additionalProperties: false
+      required: [client_id]
+      properties:
+        client_id: { type: string, minLength: 1, maxLength: 64 }
+
+    Booking:
+      type: object
+      required: [class_id, client_id, result]
+      properties:
+        class_id: { type: string, example: cls-1a2b3c4d }
+        client_id: { type: string, example: anna }
+        result:
+          type: string
+          enum: [booked, waitlisted]
+          example: booked
+        waitlist_position:
+          type: [integer, 'null']
+          minimum: 1
+          description: Позиція в листі очікування; null, якщо клієнт отримав місце
+          example: null
+
+    Cancellation:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 200 }
+
+    Problem:
+      description: Опис помилки у форматі RFC 9457 (application/problem+json)
+      type: object
+      required: [status, code, title, detail]
+      properties:
+        status: { type: integer, example: 409 }
+        code:
+          type: string
+          enum: [invalid_input, not_found, invalid_state, rule_violation]
+        title: { type: string }
+        detail: { type: string }
+
+  responses:
+    BadRequest:
+      description: Некоректні вхідні дані (структура, типи або недопустимі значення)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 400
+            code: invalid_input
+            title: Некоректні вхідні дані
+            detail: Кінець заняття має бути пізніше за початок
+    NotFound:
+      description: Заняття не знайдено
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 404
+            code: not_found
+            title: Ресурс не знайдено
+            detail: Заняття cls-unknown не знайдено
+    Conflict:
+      description: Операція суперечить поточному стану заняття або бізнес-правилу
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 409
+            code: invalid_state
+            title: Конфлікт стану
+            detail: Заняття скасоване, змінювати записи не можна

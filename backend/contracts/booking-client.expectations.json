@@ -1,0 +1,267 @@
+{
+  "consumer": "fitshed-scenario-client",
+  "provider": "fitshed-booking-api",
+  "description": "Очікування клієнта (fitshed.api.client) щодо Booking API. Перевіряються лише поля, які клієнт справді читає. Зайві поля провайдера дозволені.",
+  "matching_rules": {
+    "type": "значення має цей JSON-тип (string, integer, array, null)",
+    "equals": "значення має точно дорівнювати вказаному",
+    "example": "значення, яке підставляє тестова заглушка провайдера в тесті клієнта"
+  },
+  "interactions": [
+    {
+      "id": "create-class",
+      "description": "створення заняття",
+      "provider_state": "немає занять",
+      "client_call": {
+        "method": "create_class",
+        "args": {
+          "title": "Пілатес",
+          "trainer_id": "trainer-olena",
+          "start": "2030-01-10T10:00:00",
+          "end": "2030-01-10T11:00:00",
+          "capacity": 3
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/classes",
+        "body": {
+          "title": "Пілатес",
+          "trainer_id": "trainer-olena",
+          "start": "2030-01-10T10:00:00",
+          "end": "2030-01-10T11:00:00",
+          "capacity": 3
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "class_id": {
+            "type": "string",
+            "example": "cls-test"
+          },
+          "title": {
+            "equals": "Пілатес"
+          },
+          "status": {
+            "equals": "scheduled"
+          },
+          "free_places": {
+            "type": "integer",
+            "example": 3
+          },
+          "booked": {
+            "type": "array",
+            "example": []
+          }
+        }
+      }
+    },
+    {
+      "id": "get-class",
+      "description": "читання заняття з одним записом",
+      "provider_state": "заняття cls-test на 3 місця, записана anna",
+      "client_call": {
+        "method": "get_class",
+        "args": {
+          "class_id": "cls-test"
+        }
+      },
+      "request": {
+        "method": "GET",
+        "path": "/classes/cls-test"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "class_id": {
+            "equals": "cls-test"
+          },
+          "title": {
+            "type": "string",
+            "example": "Пілатес"
+          },
+          "status": {
+            "equals": "scheduled"
+          },
+          "free_places": {
+            "equals": 2
+          },
+          "booked": {
+            "equals": [
+              "anna"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "book-free-place",
+      "description": "запис клієнта на вільне місце",
+      "provider_state": "заняття cls-test на 3 місця без записів",
+      "client_call": {
+        "method": "book",
+        "args": {
+          "class_id": "cls-test",
+          "client_id": "anna"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/classes/cls-test/bookings",
+        "body": {
+          "client_id": "anna"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "client_id": {
+            "equals": "anna"
+          },
+          "result": {
+            "equals": "booked"
+          },
+          "waitlist_position": {
+            "equals": null
+          }
+        }
+      }
+    },
+    {
+      "id": "book-full-class",
+      "description": "запис на заповнене заняття потрапляє в лист очікування",
+      "provider_state": "заповнене заняття cls-test на 3 місця",
+      "client_call": {
+        "method": "book",
+        "args": {
+          "class_id": "cls-test",
+          "client_id": "halyna"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/classes/cls-test/bookings",
+        "body": {
+          "client_id": "halyna"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "client_id": {
+            "equals": "halyna"
+          },
+          "result": {
+            "equals": "waitlisted"
+          },
+          "waitlist_position": {
+            "equals": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "cancel-class",
+      "description": "скасування заняття",
+      "provider_state": "заняття cls-test на 3 місця, записана anna",
+      "client_call": {
+        "method": "cancel_class",
+        "args": {
+          "class_id": "cls-test",
+          "reason": "Тренер захворів"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/classes/cls-test/cancellation",
+        "body": {
+          "reason": "Тренер захворів"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "class_id": {
+            "equals": "cls-test"
+          },
+          "title": {
+            "type": "string",
+            "example": "Пілатес"
+          },
+          "status": {
+            "equals": "cancelled"
+          },
+          "free_places": {
+            "type": "integer",
+            "example": 2
+          },
+          "booked": {
+            "type": "array",
+            "example": [
+              "anna"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "book-cancelled-class",
+      "description": "запис на скасоване заняття відхиляється",
+      "provider_state": "скасоване заняття cls-test",
+      "client_call": {
+        "method": "book",
+        "args": {
+          "class_id": "cls-test",
+          "client_id": "dmytro"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/classes/cls-test/bookings",
+        "body": {
+          "client_id": "dmytro"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": {
+            "equals": "invalid_state"
+          },
+          "detail": {
+            "type": "string",
+            "example": "Заняття скасоване, змінювати записи не можна"
+          }
+        }
+      }
+    },
+    {
+      "id": "get-missing-class",
+      "description": "читання неіснуючого заняття",
+      "provider_state": "немає занять",
+      "client_call": {
+        "method": "get_class",
+        "args": {
+          "class_id": "cls-missing"
+        }
+      },
+      "request": {
+        "method": "GET",
+        "path": "/classes/cls-missing"
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": {
+            "equals": "not_found"
+          },
+          "detail": {
+            "type": "string",
+            "example": "Заняття cls-missing не знайдено"
+          }
+        }
+      }
+    }
+  ]
+}

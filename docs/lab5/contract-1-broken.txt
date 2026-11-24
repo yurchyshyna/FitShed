@@ -1,0 +1,93 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+tests/test_contract_consumer.py::test_client_meets_its_expectations[create-class] PASSED [  7%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[get-class] PASSED [ 14%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[book-free-place] PASSED [ 21%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[book-full-class] PASSED [ 28%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[cancel-class] PASSED [ 35%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[book-cancelled-class] PASSED [ 42%]
+tests/test_contract_consumer.py::test_client_meets_its_expectations[get-missing-class] PASSED [ 50%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[create-class] FAILED [ 57%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[get-class] FAILED [ 64%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[book-free-place] PASSED [ 71%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[book-full-class] PASSED [ 78%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[cancel-class] FAILED [ 85%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[book-cancelled-class] PASSED [ 92%]
+tests/test_contract_provider.py::test_provider_honours_client_expectations[get-missing-class] PASSED [100%]
+
+=================================== FAILURES ===================================
+___________ test_provider_honours_client_expectations[create-class] ____________
+
+interaction = {'id': 'create-class', 'description': 'створення заняття', 'provider_state': 'немає занять', 'client_call': {'method':...e': 'Пілатес', 'trainer_id': 'trainer-olena', 'start': '2030-01-10T10:00:00', 'end': '2030-01-10T11:00:00', ...}}, ...}
+
+    @pytest.mark.parametrize("interaction", interactions(), ids=lambda i: i["id"])
+    def test_provider_honours_client_expectations(interaction):
+        repo = InMemoryGroupClassRepository()
+        service = BookingService(repo, clock=lambda: NOW)
+        prepare_state(service, interaction["provider_state"])
+        api = build_api(clock=lambda: NOW, repo=repo)
+    
+        with running(make_handler(api, quiet=True)) as url:
+            req = interaction["request"]
+            status, body = send(url, req["method"], req["path"], req.get("body"))
+    
+        expected = interaction["response"]
+        problems = [] if status == expected["status"] else [f"статус {status}, очікувався {expected['status']}"]
+        problems += check_body(body, expected["body"])
+>       assert not problems, f"«{interaction['description']}»: " + "; ".join(problems)
+E       AssertionError: «створення заняття»: немає поля «free_places»
+E       assert not ['немає поля «free_places»']
+
+tests/test_contract_provider.py:72: AssertionError
+_____________ test_provider_honours_client_expectations[get-class] _____________
+
+interaction = {'id': 'get-class', 'description': 'читання заняття з одним записом', 'provider_state': 'заняття cls-test на 3 місця, записана anna', 'client_call': {'method': 'get_class', 'args': {'class_id': 'cls-test'}}, ...}
+
+    @pytest.mark.parametrize("interaction", interactions(), ids=lambda i: i["id"])
+    def test_provider_honours_client_expectations(interaction):
+        repo = InMemoryGroupClassRepository()
+        service = BookingService(repo, clock=lambda: NOW)
+        prepare_state(service, interaction["provider_state"])
+        api = build_api(clock=lambda: NOW, repo=repo)
+    
+        with running(make_handler(api, quiet=True)) as url:
+            req = interaction["request"]
+            status, body = send(url, req["method"], req["path"], req.get("body"))
+    
+        expected = interaction["response"]
+        problems = [] if status == expected["status"] else [f"статус {status}, очікувався {expected['status']}"]
+        problems += check_body(body, expected["body"])
+>       assert not problems, f"«{interaction['description']}»: " + "; ".join(problems)
+E       AssertionError: «читання заняття з одним записом»: немає поля «free_places»
+E       assert not ['немає поля «free_places»']
+
+tests/test_contract_provider.py:72: AssertionError
+___________ test_provider_honours_client_expectations[cancel-class] ____________
+
+interaction = {'id': 'cancel-class', 'description': 'скасування заняття', 'provider_state': 'заняття cls-test на 3 місця, записана anna', 'client_call': {'method': 'cancel_class', 'args': {'class_id': 'cls-test', 'reason': 'Тренер захворів'}}, ...}
+
+    @pytest.mark.parametrize("interaction", interactions(), ids=lambda i: i["id"])
+    def test_provider_honours_client_expectations(interaction):
+        repo = InMemoryGroupClassRepository()
+        service = BookingService(repo, clock=lambda: NOW)
+        prepare_state(service, interaction["provider_state"])
+        api = build_api(clock=lambda: NOW, repo=repo)
+    
+        with running(make_handler(api, quiet=True)) as url:
+            req = interaction["request"]
+            status, body = send(url, req["method"], req["path"], req.get("body"))
+    
+        expected = interaction["response"]
+        problems = [] if status == expected["status"] else [f"статус {status}, очікувався {expected['status']}"]
+        problems += check_body(body, expected["body"])
+>       assert not problems, f"«{interaction['description']}»: " + "; ".join(problems)
+E       AssertionError: «скасування заняття»: немає поля «free_places»
+E       assert not ['немає поля «free_places»']
+
+tests/test_contract_provider.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_contract_provider.py::test_provider_honours_client_expectations[create-class]
+FAILED tests/test_contract_provider.py::test_provider_honours_client_expectations[get-class]
+FAILED tests/test_contract_provider.py::test_provider_honours_client_expectations[cancel-class]
+========================= 3 failed, 11 passed in 0.51s =========================
