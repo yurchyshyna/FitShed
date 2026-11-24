@@ -1,0 +1,19 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.2.0, pluggy-1.7.0 -- D:\5curse\software_arch\FitShed\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\5curse\software_arch\FitShed\backend
+configfile: pyproject.toml
+collecting ... collected 10 items
+
+tests/test_saga.py::test_success_reserves_spot_and_debits_visit PASSED   [ 10%]
+tests/test_saga.py::test_second_step_failure_releases_spot PASSED        [ 20%]
+tests/test_saga.py::test_first_step_rejection_needs_no_compensation PASSED [ 30%]
+tests/test_saga.py::test_repeated_saga_and_commands_have_no_extra_effect PASSED [ 40%]
+tests/test_saga.py::test_repeated_compensation_has_no_extra_effect PASSED [ 50%]
+tests/test_saga.py::test_same_operation_id_with_different_data_is_rejected PASSED [ 60%]
+tests/test_saga.py::test_temporary_failure_of_second_step_is_retried_with_same_operation_id PASSED [ 70%]
+tests/test_saga.py::test_failed_compensation_waits_and_succeeds_on_retry PASSED [ 80%]
+tests/test_saga.py::test_compensation_stays_pending_while_failures_continue PASSED [ 90%]
+tests/test_saga.py::test_restart_of_orchestrator_loses_pending_compensation PASSED [100%]
+
+============================= 10 passed in 0.07s ==============================

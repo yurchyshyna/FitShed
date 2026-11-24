@@ -1,0 +1,36 @@
+%% Діаграма послідовності: оркестрована Saga «запис на заняття з абонементом»
+sequenceDiagram
+  autonumber
+  actor C as Клієнт
+  participant O as Оркестратор Saga
+  participant B as Розклад і запис
+  participant M as Абонементи
+
+  C->>O: start(saga_id, class_id, client_id, membership_id)
+  O->>B: ReserveSpot(operation_id = saga_id:reserve-spot)
+  alt місць немає
+    B-->>O: Reply(ok=false, "немає вільних місць")
+    O-->>C: REJECTED (компенсація не потрібна)
+  else місце зайнято
+    B-->>O: Reply(ok=true)
+    Note over O: стан SPOT_RESERVED
+    O->>M: DebitVisit(operation_id = saga_id:debit-visit)
+    alt відвідування списано
+      M-->>O: Reply(ok=true)
+      O-->>C: COMPLETED
+    else абонемент вичерпано або прострочено
+      M-->>O: Reply(ok=false, причина)
+      Note over O: стан COMPENSATING
+      O->>B: ReleaseSpot(operation_id = saga_id:release-spot)
+      alt компенсація вдалася
+        B-->>O: Reply(ok=true)
+        O-->>C: COMPENSATED
+      else технічний збій
+        B--xO: TemporaryFailure
+        Note over O: стан COMPENSATION_PENDING
+        O->>B: retry_pending(): ReleaseSpot (той самий operation_id)
+        B-->>O: Reply(ok=true)
+        O-->>C: COMPENSATED
+      end
+    end
+  end

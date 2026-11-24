@@ -1,6 +1,6 @@
 [project]
 name = "fitshed"
-version = "0.2.0"
+version = "0.3.0"
 description = "FitShed: розклад і онлайн-запис для фітнес-центру"
 requires-python = ">=3.11"
 

@@ -1,0 +1,13 @@
+%% Стани Saga в оркестраторі
+stateDiagram-v2
+  [*] --> STARTED
+  STARTED --> REJECTED : ReserveSpot відхилено
+  STARTED --> SPOT_RESERVED : ReserveSpot ok
+  SPOT_RESERVED --> COMPLETED : DebitVisit ok
+  SPOT_RESERVED --> COMPENSATING : DebitVisit відхилено
+  COMPENSATING --> COMPENSATED : ReleaseSpot ok
+  COMPENSATING --> COMPENSATION_PENDING : технічний збій
+  COMPENSATION_PENDING --> COMPENSATING : retry_pending()
+  REJECTED --> [*]
+  COMPLETED --> [*]
+  COMPENSATED --> [*]
