@@ -1,0 +1,15 @@
+%% Стани circuit breaker шлюзу
+stateDiagram-v2
+  [*] --> closed
+  closed --> open : 5 відмов поспіль (timeout, обрив, 5xx)
+  open --> half_open : минуло open_timeout = 3 с
+  half_open --> closed : пробний виклик успішний
+  half_open --> open : пробний виклик невдалий
+  note right of open
+    виклики не виконуються,
+    відповідь 503 circuit_open + Retry-After
+  end note
+  note right of half_open
+    дозволено 1 пробний виклик,
+    інші отримують 503 circuit_open
+  end note

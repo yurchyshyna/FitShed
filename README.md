@@ -10,7 +10,7 @@
 | №4 | Оцінювання архітектури та багатометриковий вибір конфігурації | [`docs/lab4/README.md`](docs/lab4/README.md), `evaluation/` |
 | №5 (модуль 2, ЛР 1) | Проєктування API та перевірка контрактів | [`docs/lab5/README.md`](docs/lab5/README.md), `backend/openapi.yaml`, `backend/src/fitshed/api/` |
 | №6 (модуль 2, ЛР 2) | Подійна взаємодія та ідемпотентна обробка повідомлень | [`docs/lab6/README.md`](docs/lab6/README.md), `backend/src/fitshed/messaging/`, `docker-compose.yml` |
-
+| №7 (модуль 2, ЛР 3) | API Gateway та захист від каскадних відмов | [`docs/lab7/README.md`](docs/lab7/README.md), `backend/src/fitshed/gateway/`, `backend/config/gateway.json` |
 
 
 ## Структура репозиторію
@@ -25,13 +25,16 @@
 | `docs/adr/ADR-003-deployment.md` | Підсумкове рішення про розміщення системи (ЛР 4) |
 | `docs/adr/ADR-004-rest-api.md` | Вибір REST серед REST, gRPC і GraphQL (ЛР 5) |
 | `docs/adr/ADR-005-event-messaging.md` | Черга RabbitMQ проти журналу Kafka, ризик втрати події й outbox (ЛР 6) |
+| `docs/adr/ADR-006-gateway-resilience.md` | Шлюз, повтори, circuit breaker, rate limiting і їх компроміс (ЛР 7) |
 | `docs/lab2/` | Карта контекстів, доменна модель, словник, результати тестів (ЛР 2) |
 | `docs/lab3/` | Контракти, діаграма послідовності, результати перевірок Saga (ЛР 3) |
 | `docs/lab4/` | Аналіз ризиків, таблиці оцінок, вигоди й витрати (ЛР 4) |
 | `docs/lab5/` | Опис API, результати контрактних перевірок до й після несумісної зміни (ЛР 5) |
 | `docs/lab6/` | Схема події, діаграма взаємодії, журнали й результати перевірок (ЛР 6) |
+| `docs/lab7/` | Схема шлюзу, журнали сценаріїв, таблиця вимірювань (ЛР 7) |
 | `docker-compose.yml`, `.env.example` | Локальний стенд RabbitMQ і приклад змінних оточення (ЛР 6) |
-| `backend/` | Доменне ядро, Saga, HTTP API, подійна взаємодія та тести (ЛР 2–6) |
+| `backend/` | Доменне ядро, Saga, HTTP API, подійна взаємодія та тести (ЛР 2–7) |
+| `backend/config/gateway.json` | Конфігурація шлюзу: таймаути, повтори, breaker, ліміти (ЛР 7) |
 | `backend/openapi.yaml` | Контракт HTTP API в OpenAPI 3.1.1 (ЛР 5) |
 | `backend/contracts/` | Файл очікувань клієнта для контрактних перевірок (ЛР 5) |
 | `evaluation/` | Дані альтернатив, ваги, скрипт розрахунку та його тести (ЛР 4) |
@@ -46,7 +49,7 @@ docker run -it --rm -p 8080:8080 -v ${PWD}/docs/architecture:/usr/local/structur
 
 і відкрити `http://localhost:8080`. Подвійний клік по FitShed на діаграмі контексту відкриває діаграму контейнерів. PNG у папці `exports` експортовано зі Structurizr.
 
-### Запуск тестів (ЛР 2–6)
+### Запуск тестів (ЛР 2–7)
 
 ```
 cd backend
@@ -87,6 +90,14 @@ python -m fitshed.messaging.rabbit_checks --save ../../docs/lab6/rabbitmq-checks
 ```
 python evaluation/mcda.py --save docs/lab4/results.md
 python -m pytest evaluation
+```
+
+### API Gateway і перевірки стійкості (ЛР 7)
+
+```
+cd backend/src
+python -m fitshed.gateway.checks --save ../../docs/lab7/checks.txt
+python -m fitshed.gateway.compare --save ../../docs/lab7/comparison.md
 ```
 
 ---

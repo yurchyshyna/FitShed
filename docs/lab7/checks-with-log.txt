@@ -1,0 +1,159 @@
+====================================================================================================
+Сценарій 1. Нормальна відповідь
+====================================================================================================
+    log: fitshed.stub request_id=5c558d423b16456f route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=5c558d423b16456f route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=5
+    log: fitshed.gateway request_id=5c558d423b16456f route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=6 breaker=closed
+  звичайний запит                              HTTP 200       55 мс  викликів залежності: 1
+  [OK] 200, один виклик залежності
+
+====================================================================================================
+Сценарій 2. Зависання залежності в межах deadline
+====================================================================================================
+    log: fitshed.stub control mode=delay_next params={'mode': 'delay_next', 'count': 1, 'delay': 4.0}
+    log: fitshed.stub request_id=a5e847426dc14f4f route=get status=200 delay=4.0s
+    log: fitshed.gateway request_id=a5e847426dc14f4f route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=timeout status=- elapsed_ms=505
+    log: fitshed.stub request_id=a5e847426dc14f4f route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=a5e847426dc14f4f route='GET /api/clients/{id}/membership' upstream=membership_service attempt=2 outcome=ok status=200 elapsed_ms=25
+    log: fitshed.gateway request_id=a5e847426dc14f4f route='GET /api/clients/{id}/membership' result=ok upstream_calls=2 elapsed_ms=575 breaker=closed
+  перша спроба зависла, повтор успішний        HTTP 200      611 мс  викликів залежності: 2
+    log: fitshed.stub control mode=hang params={'mode': 'hang', 'delay': 6.0}
+    log: fitshed.stub request_id=337d8774c5904241 route=get status=200 delay=6.0s
+    log: fitshed.gateway request_id=337d8774c5904241 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=timeout status=- elapsed_ms=518
+    log: fitshed.stub request_id=337d8774c5904241 route=get status=200 delay=6.0s
+    log: fitshed.gateway request_id=337d8774c5904241 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=2 outcome=timeout status=- elapsed_ms=501
+    log: fitshed.stub request_id=337d8774c5904241 route=get status=200 delay=6.0s
+    log: fitshed.gateway request_id=337d8774c5904241 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=3 outcome=timeout status=- elapsed_ms=509
+    log: fitshed.gateway request_id=337d8774c5904241 route='GET /api/clients/{id}/membership' result=exhausted upstream_calls=3 elapsed_ms=1681 breaker=closed
+  залежність зависла повністю                  HTTP 504     1705 мс  викликів залежності: 3 code=upstream_timeout
+    log: fitshed.stub control mode=normal params={'mode': 'normal'}
+  [OK] зависла спроба обірвана таймаутом, повтор дав 200 у межах deadline
+  [OK] повне зависання: 504 не пізніше deadline (2.0 с), а не через 6 с
+  [OK] кількість спроб обмежена
+
+====================================================================================================
+Сценарій 3. Тимчасова помилка з успішним повтором
+====================================================================================================
+    log: fitshed.stub control mode=fail_next params={'mode': 'fail_next', 'count': 2, 'status': 503}
+    log: fitshed.stub request_id=e220fd6f23c44064 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=e220fd6f23c44064 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=retryable status=503 elapsed_ms=7
+    log: fitshed.stub request_id=e220fd6f23c44064 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=e220fd6f23c44064 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=2 outcome=retryable status=503 elapsed_ms=14
+    log: fitshed.stub request_id=e220fd6f23c44064 route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=e220fd6f23c44064 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=3 outcome=ok status=200 elapsed_ms=128
+    log: fitshed.gateway request_id=e220fd6f23c44064 route='GET /api/clients/{id}/membership' result=ok upstream_calls=3 elapsed_ms=382 breaker=closed
+  дві тимчасові помилки 503, потім успіх       HTTP 200      390 мс  викликів залежності: 3
+    log: fitshed.stub control mode=fail_next params={'mode': 'fail_next', 'count': 1, 'status': 500}
+    log: fitshed.stub request_id=a9d31237344742bd route=get status=500 delay=0.0s
+    log: fitshed.gateway request_id=a9d31237344742bd route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=final status=500 elapsed_ms=14
+    log: fitshed.gateway request_id=a9d31237344742bd route='GET /api/clients/{id}/membership' result=final upstream_calls=1 elapsed_ms=15 breaker=closed
+  помилка 500 (не тимчасова)                   HTTP 500       19 мс  викликів залежності: 1
+    log: fitshed.stub control mode=normal params={'mode': 'normal'}
+  [OK] 503 повторено: результат 200 після 3 викликів
+  [OK] 500 не повторюється: 1 виклик
+
+====================================================================================================
+Сценарій 4. Відкриття breaker і перехід через half-open   (перевизначено: {'rate_capacity': 1000})
+====================================================================================================
+    log: fitshed.stub control mode=outage params={'mode': 'outage', 'status': 503}
+  залежність недоступна (outage 503); поріг відкриття 5 відмов, open_timeout 3.0 с
+    log: fitshed.stub request_id=2a9d5cdcb77b4a67 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=2a9d5cdcb77b4a67 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=retryable status=503 elapsed_ms=12
+    log: fitshed.stub request_id=2a9d5cdcb77b4a67 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=2a9d5cdcb77b4a67 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=2 outcome=retryable status=503 elapsed_ms=5
+    log: fitshed.stub request_id=2a9d5cdcb77b4a67 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=2a9d5cdcb77b4a67 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=3 outcome=retryable status=503 elapsed_ms=20
+    log: fitshed.gateway request_id=2a9d5cdcb77b4a67 route='GET /api/clients/{id}/membership' result=exhausted upstream_calls=3 elapsed_ms=218 breaker=closed
+  запит 1 (breaker closed)                     HTTP 503      224 мс  викликів залежності: 3
+    log: fitshed.stub request_id=2cd86d9da7124fd8 route=get status=503 delay=0.0s
+    log: fitshed.gateway request_id=2cd86d9da7124fd8 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=retryable status=503 elapsed_ms=5
+    log: fitshed.stub request_id=2cd86d9da7124fd8 route=get status=503 delay=0.0s
+    log: fitshed.gateway breaker=membership_service state=closed->open failures=5
+    log: fitshed.gateway request_id=2cd86d9da7124fd8 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=2 outcome=retryable status=503 elapsed_ms=4
+    log: fitshed.gateway request_id=2cd86d9da7124fd8 route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=2 elapsed_ms=141 breaker=open
+  запит 2 (breaker open)                       HTTP 503      146 мс  викликів залежності: 2
+    log: fitshed.gateway request_id=bd985156d8bc4c6a route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=0 elapsed_ms=0 breaker=open
+    log: fitshed.gateway request_id=6dcbcb157ab24d99 route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=0 elapsed_ms=0 breaker=open
+    log: fitshed.gateway request_id=15a012f2f9a147f6 route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=0 elapsed_ms=0 breaker=open
+    log: fitshed.gateway request_id=558d83027ea1415f route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=0 elapsed_ms=0 breaker=open
+    log: fitshed.gateway request_id=e6c2bf9dad964be7 route='GET /api/clients/{id}/membership' result=breaker_open upstream_calls=0 elapsed_ms=0 breaker=open
+  breaker open, запит 1                        HTTP 503        5 мс  викликів залежності: 0 code=circuit_open Retry-After=3
+  breaker open, запит 2                        HTTP 503        4 мс  викликів залежності: 0 code=circuit_open Retry-After=3
+  breaker open, запит 3                        HTTP 503        4 мс  викликів залежності: 0 code=circuit_open Retry-After=3
+  breaker open, запит 4                        HTTP 503        4 мс  викликів залежності: 0 code=circuit_open Retry-After=3
+  breaker open, запит 5                        HTTP 503        6 мс  викликів залежності: 0 code=circuit_open Retry-After=3
+    log: fitshed.stub control mode=normal params={'mode': 'normal'}
+  залежність відновлено; очікування 3.0 с до half-open
+    log: fitshed.gateway breaker=membership_service state=open->half_open failures=5
+    log: fitshed.stub request_id=a31f9982ce624b50 route=get status=200 delay=0.0s
+    log: fitshed.gateway breaker=membership_service state=half_open->closed failures=0
+    log: fitshed.gateway request_id=a31f9982ce624b50 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=10
+    log: fitshed.gateway request_id=a31f9982ce624b50 route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=10 breaker=closed
+  проба в half-open                            HTTP 200       17 мс  викликів залежності: 1
+    log: fitshed.stub request_id=5f8bd4b148e44dac route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=5f8bd4b148e44dac route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=3
+    log: fitshed.gateway request_id=5f8bd4b148e44dac route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=3 breaker=closed
+  після закриття breaker                       HTTP 200        8 мс  викликів залежності: 1
+  переходи стану: [['closed', 'open'], ['open', 'half_open'], ['half_open', 'closed']]
+  [OK] breaker відкрився після серії відмов
+  [OK] у стані open відповідь 503 circuit_open без звернення до залежності
+  [OK] відмова в стані open швидка (< 50 мс)
+  [OK] одна проба в half-open, після неї closed
+  [OK] після відновлення запити проходять
+
+====================================================================================================
+Сценарій 5. Перевищення ліміту запитів (429)   (перевизначено: {'rate_capacity': 5, 'rate_refill': 0.2})
+====================================================================================================
+    log: fitshed.stub request_id=940c18a64ab84fcb route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=940c18a64ab84fcb route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=15
+    log: fitshed.gateway request_id=940c18a64ab84fcb route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=16 breaker=closed
+    log: fitshed.stub request_id=8e61e457a2cb410b route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=8e61e457a2cb410b route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=15
+    log: fitshed.gateway request_id=8e61e457a2cb410b route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=15 breaker=closed
+    log: fitshed.stub request_id=94fd7ada55fd4b46 route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=94fd7ada55fd4b46 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=14
+    log: fitshed.gateway request_id=94fd7ada55fd4b46 route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=14 breaker=closed
+    log: fitshed.stub request_id=5c032b2d5e2444fc route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=5c032b2d5e2444fc route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=15
+    log: fitshed.gateway request_id=5c032b2d5e2444fc route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=15 breaker=closed
+    log: fitshed.stub request_id=647326dbb02345de route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=647326dbb02345de route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=4
+    log: fitshed.gateway request_id=647326dbb02345de route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=5 breaker=closed
+    log: fitshed.gateway request_id=26111ce6dfb24b16 rate_limited key_hash=13d4a585 retry_after=4.74s
+    log: fitshed.gateway request_id=41fdc29094a74570 rate_limited key_hash=13d4a585 retry_after=4.71s
+    log: fitshed.gateway request_id=e8c8c8a1bf8b452b rate_limited key_hash=13d4a585 retry_after=4.66s
+  запит 1 з 8 (ключ client-burst)              HTTP 200       34 мс  викликів залежності: 1
+  запит 2 з 8 (ключ client-burst)              HTTP 200       32 мс  викликів залежності: 1
+  запит 5 з 8 (ключ client-burst)              HTTP 200       10 мс  викликів залежності: 1
+  запит 6 з 8 (ключ client-burst)              HTTP 429       14 мс  викликів залежності: 0 code=rate_limited Retry-After=5
+  запит 7 з 8 (ключ client-burst)              HTTP 429       13 мс  викликів залежності: 0 code=rate_limited Retry-After=5
+  запит 8 з 8 (ключ client-burst)              HTTP 429       16 мс  викликів залежності: 0 code=rate_limited Retry-After=5
+    log: fitshed.stub request_id=22b09e1fe10b45c5 route=get status=200 delay=0.0s
+    log: fitshed.gateway request_id=22b09e1fe10b45c5 route='GET /api/clients/{id}/membership' upstream=membership_service attempt=1 outcome=ok status=200 elapsed_ms=38
+    log: fitshed.gateway request_id=22b09e1fe10b45c5 route='GET /api/clients/{id}/membership' result=ok upstream_calls=1 elapsed_ms=38 breaker=closed
+  інший клієнт у той самий момент              HTTP 200       45 мс  викликів залежності: 1
+  [OK] перші 5 запитів пройшли
+  [OK] понад ліміт — 429 з Retry-After
+  [OK] відхилені запити не дійшли до залежності
+  [OK] ліміт рахується окремо для кожного клієнта
+
+====================================================================================================
+Додатково. Операція зміни стану не повторюється
+====================================================================================================
+    log: fitshed.stub control mode=fail_next params={'mode': 'fail_next', 'count': 1, 'status': 503}
+    log: fitshed.stub request_id=d27204e27ba24a9f route=debit status=503 delay=0.0s
+    log: fitshed.gateway request_id=d27204e27ba24a9f route='POST /api/clients/{id}/membership/debits' upstream=membership_service attempt=1 outcome=retryable status=503 elapsed_ms=15
+    log: fitshed.gateway request_id=d27204e27ba24a9f route='POST /api/clients/{id}/membership/debits' result=not_retryable upstream_calls=1 elapsed_ms=15 breaker=closed
+  списання, залежність відповіла 503           HTTP 503       33 мс  викликів залежності: 1
+    log: fitshed.stub control mode=delay_next params={'mode': 'delay_next', 'count': 1, 'delay': 3.0}
+    log: fitshed.stub request_id=6d7382be5f6440a1 route=debit status=200 delay=3.0s
+    log: fitshed.gateway request_id=6d7382be5f6440a1 route='POST /api/clients/{id}/membership/debits' upstream=membership_service attempt=1 outcome=timeout status=- elapsed_ms=2005
+    log: fitshed.gateway request_id=6d7382be5f6440a1 route='POST /api/clients/{id}/membership/debits' result=not_retryable upstream_calls=1 elapsed_ms=2005 breaker=closed
+  списання, залежність не відповіла вчасно     HTTP 504     2010 мс  викликів залежності: 1 code=upstream_timeout
+  списань у залежності до: 0, після очікування: 1
+    log: fitshed.stub control mode=normal params={'mode': 'normal'}
+  [OK] 503 при списанні не повторено: 1 виклик
+  [OK] таймаут при списанні не повторено: 504, 1 виклик
+  [OK] після таймауту списання все одно відбулося: таймаут не доводить, що дії не було
+
+Підсумок: пройдено 6 з 6 перевірок

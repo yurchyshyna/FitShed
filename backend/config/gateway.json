@@ -1,0 +1,26 @@
+{
+  "_comment": "Конфігурація шлюзу FitShed (ЛР 7). Час у секундах.",
+  "upstreams": {
+    "booking_api": "http://127.0.0.1:8000",
+    "membership_service": "http://127.0.0.1:8001"
+  },
+  "read_retry": {
+    "per_try_timeout": 0.5,
+    "deadline": 2.0,
+    "max_attempts": 3,
+    "base_delay": 0.1,
+    "max_delay": 1.0,
+    "retryable_statuses": [502, 503, 504]
+  },
+  "write_timeout": 2.0,
+  "breaker": {
+    "failure_threshold": 5,
+    "open_timeout": 3.0,
+    "half_open_max_calls": 1
+  },
+  "rate_limit": {
+    "capacity": 20,
+    "refill_per_second": 10,
+    "key_header": "X-Api-Key"
+  }
+}

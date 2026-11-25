@@ -1,0 +1,34 @@
+%% Межі компонентів і маршрути ЛР 7
+flowchart LR
+  client["<b>Клієнт</b><br/>веб-застосунок / мобільний<br/>заголовки X-Api-Key, X-Request-ID"]
+
+  subgraph gw ["API Gateway :8080 [Starlette + uvicorn]"]
+    direction TB
+    rl["Rate limiting<br/>token bucket за X-Api-Key → 429"]
+    rid["request_id<br/>прийняти або створити, передати далі"]
+    pol["Політики виклику<br/>timeout 0,5 с · deadline 2 с · до 3 спроб<br/>backoff + jitter (лише GET)<br/>circuit breaker на кожну залежність"]
+    rl --> rid --> pol
+  end
+
+  subgraph api ["Booking API :8000 [FastAPI, ЛР 5]"]
+    direction TB
+    routes["/classes, /classes/{id}/bookings,<br/>/classes/{id}/cancellation"]
+    domain["Доменне ядро GroupClass<br/>(усі бізнес-правила)"]
+    routes --> domain
+  end
+
+  stub["<b>Сервіс абонементів</b> :8001<br/>[керована HTTP-заглушка]<br/>затримки, 503, outage, flaky"]
+
+  client -- "HTTPS / JSON" --> rl
+  pol -- "/api/classes/** → /classes/**<br/>GET з повторами, POST — одна спроба" --> routes
+  pol -- "GET /api/clients/{id}/membership → /memberships/{id}<br/>з повторами і breaker" --> stub
+  pol -- "POST /api/clients/{id}/membership/debits<br/>→ /memberships/{id}/debits, одна спроба" --> stub
+
+  classDef box fill:#1f7a72,stroke:#0b4f4a,color:#ffffff
+  classDef ext fill:#6b8f8b,stroke:#3f615d,color:#ffffff
+  classDef person fill:#0b4f4a,stroke:#06302d,color:#ffffff
+  class rl,rid,pol,routes,domain box
+  class stub ext
+  class client person
+  style gw fill:#eef7f6,stroke:#1f7a72,stroke-dasharray: 6 4,color:#0b4f4a
+  style api fill:#eef7f6,stroke:#1f7a72,stroke-dasharray: 6 4,color:#0b4f4a
