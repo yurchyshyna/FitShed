@@ -1,0 +1,31 @@
+%% Подійна взаємодія: GroupClassCancelled → повернення відвідувань
+sequenceDiagram
+  autonumber
+  actor A as Адміністратор
+  participant B as Розклад і запис (публікатор)
+  participant X as RabbitMQ<br/>fitshed.events
+  participant Q as черга<br/>memberships.class-cancelled
+  participant C as Абонементи (споживач)
+  participant DB as SQLite<br/>memberships.db
+  participant D as черга помилок<br/>…class-cancelled.dlq
+
+  A->>B: скасувати заняття
+  B->>B: GroupClass.cancel() → подія GroupClassCancelled
+  B->>X: publish(event_id, persistent, mandatory)
+  X->>Q: маршрут booking.class.cancelled
+  X-->>B: publisher confirm (брокер зберіг повідомлення)
+  Q->>C: доставка (ручний ACK, prefetch = 1)
+  alt повідомлення невалідне
+    C->>DB: failed_messages (причина)
+    C->>Q: basic_nack(requeue=false)
+    Q->>D: dead-letter
+  else валідне
+    C->>DB: BEGIN, INSERT processed_events(event_id)
+    alt event_id уже є
+      DB-->>C: UNIQUE → дублікат → ROLLBACK
+    else нова подія
+      C->>DB: +1 відвідування кожному записаному, INSERT visit_refunds, COMMIT
+    end
+    C->>Q: basic_ack (лише після COMMIT)
+  end
+  Note over C,Q: Якщо процес упав до ACK, брокер повторно доставляє повідомлення (redelivered=true),<br/>а реєстр processed_events не дає повторного бізнес-ефекту

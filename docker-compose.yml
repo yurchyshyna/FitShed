@@ -1,0 +1,25 @@
+# Локальний стенд ЛР 6: брокер RabbitMQ для подійної взаємодії FitShed.
+# Запуск з кореня репозиторію:  docker compose up -d
+# Панель керування:             http://localhost:15672
+# Облікові дані синтетичні; справжні значення задаються у файлі .env (він не потрапляє в Git).
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: fitshed-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # веб-панель керування
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-fitshed}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-fitshed-local-only}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq   # durable-черги й persistent-повідомлення переживають перезапуск контейнера
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
