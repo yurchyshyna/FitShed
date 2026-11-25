@@ -95,7 +95,9 @@ python -m fitshed.gateway.compare --vary max_attempts=2 --save ../../docs/lab8/p
 ```
  
 ## Звіти
- 
+
+| Робота | Тема | Звіт | Код |
+|---|---|---|---|
 | №1 | Вимоги, архітектурні стилі та C4 | [`Lab1-report.md`](docs/lab1/Lab1-report.md) | `docs/architecture/` |
 | №2 | DDD і доменне ядро з портами й адаптерами | [`Lab2-report.md`](docs/lab2/Lab2-report.md) | `backend/src/fitshed/booking/`, `backend/src/fitshed/memberships/` |
 | №3 | Взаємодія компонентів і узгодженість даних. Патерн Saga | [`Lab3-report.md`](docs/lab3/Lab3-report.md) | `backend/src/fitshed/saga/` |
