@@ -8,10 +8,10 @@
 | №2 | DDD і доменне ядро з портами й адаптерами | [`docs/lab2/README.md`](docs/lab2/README.md), `backend/` |
 | №3 | Взаємодія компонентів і узгодженість даних. Патерн Saga | [`docs/lab3/README.md`](docs/lab3/README.md), `backend/src/fitshed/saga/` |
 | №4 | Оцінювання архітектури та багатометриковий вибір конфігурації | [`docs/lab4/README.md`](docs/lab4/README.md), `evaluation/` |
-| №5 (модуль 2, ЛР 1) | Проєктування API та перевірка контрактів | [`docs/lab5/README.md`](docs/lab5/README.md), `backend/openapi.yaml`, `backend/src/fitshed/api/` |
-| №6 (модуль 2, ЛР 2) | Подійна взаємодія та ідемпотентна обробка повідомлень | [`docs/lab6/README.md`](docs/lab6/README.md), `backend/src/fitshed/messaging/`, `docker-compose.yml` |
-| №7 (модуль 2, ЛР 3) | API Gateway та захист від каскадних відмов | [`docs/lab7/README.md`](docs/lab7/README.md), `backend/src/fitshed/gateway/`, `backend/config/gateway.json` |
-| №8 (модуль 2, ЛР 4) | Контроль доступу та підсумкова оцінка архітектурних рішень | [`docs/lab8/README.md`](docs/lab8/README.md), `backend/src/fitshed/auth/`, `backend/src/fitshed/api/authz.py` |
+| №5  | Проєктування API та перевірка контрактів | [`docs/lab5/README.md`](docs/lab5/README.md), `backend/openapi.yaml`, `backend/src/fitshed/api/` |
+| №6 | Подійна взаємодія та ідемпотентна обробка повідомлень | [`docs/lab6/README.md`](docs/lab6/README.md), `backend/src/fitshed/messaging/`, `docker-compose.yml` |
+| №7  | API Gateway та захист від каскадних відмов | [`docs/lab7/README.md`](docs/lab7/README.md), `backend/src/fitshed/gateway/`, `backend/config/gateway.json` |
+| №8  | Контроль доступу та підсумкова оцінка архітектурних рішень | [`docs/lab8/README.md`](docs/lab8/README.md), `backend/src/fitshed/auth/`, `backend/src/fitshed/api/authz.py` |
 
 ## Структура репозиторію
 
