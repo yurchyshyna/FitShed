@@ -1,6 +1,7 @@
 # Відповіді на контрольні запитання
 answers.md
 backend/var/
+*.pem
 
 # Службові файли Structurizr
 docs/architecture/.structurizr/

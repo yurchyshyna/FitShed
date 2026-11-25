@@ -6,6 +6,7 @@
   2) клієнт коректно розбирає відповідь і не потребує полів поза контрактом.
 Справжній провайдер тут не запускається.
 """
+
 import json
 from http.server import BaseHTTPRequestHandler
 
@@ -23,11 +24,20 @@ def stub_for(interaction: dict, recorded: list):
         def _reply(self) -> None:
             length = int(self.headers.get("Content-Length") or 0)
             raw = self.rfile.read(length)
-            recorded.append({"method": self.command, "path": self.path,
-                             "body": json.loads(raw) if raw else None})
+            recorded.append(
+                {
+                    "method": self.command,
+                    "path": self.path,
+                    "body": json.loads(raw) if raw else None,
+                    "authorization": self.headers.get("Authorization"),
+                }
+            )
             payload = json.dumps(body, ensure_ascii=False).encode()
             self.send_response(status)
-            self.send_header("Content-Type", "application/json" if status < 400 else "application/problem+json")
+            self.send_header(
+                "Content-Type",
+                "application/json" if status < 400 else "application/problem+json",
+            )
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
@@ -45,7 +55,8 @@ def test_client_meets_its_expectations(interaction):
     recorded: list = []
     call = interaction["client_call"]
     with running(stub_for(interaction, recorded)) as url:
-        client = FitShedClient(url)
+        token = f"test-token-for-{interaction['auth']['sub']}"
+        client = FitShedClient(url, token)
         method = getattr(client, call["method"])
         if interaction["response"]["status"] >= 400:
             with pytest.raises(ApiError) as error:
@@ -60,6 +71,9 @@ def test_client_meets_its_expectations(interaction):
     assert recorded[0]["method"] == expected_request["method"]
     assert recorded[0]["path"] == expected_request["path"]
     assert recorded[0]["body"] == expected_request.get("body")
+    assert (
+        recorded[0]["authorization"] == f"Bearer {token}"
+    )  # клієнт надсилає токен користувача
 
     # Клієнт має правильно перенести значення з відповіді у свої об'єкти
     if result is not None:

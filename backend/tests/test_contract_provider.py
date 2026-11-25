@@ -4,6 +4,7 @@
 (FastAPI + uvicorn + BookingService + доменне ядро + сховище в пам'яті).
 Для кожної взаємодії спершу готується стан провайдера (provider_state).
 """
+
 import json
 import urllib.error
 import urllib.request
@@ -11,6 +12,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from auth_support import auth, verifier
 from contract_support import check_body, interactions, running_app
 from fitshed.api.app import create_app
 from fitshed.api.server import build_service
@@ -24,7 +26,9 @@ def prepare_state(service: BookingService, state: str) -> None:
     start = datetime(2030, 1, 10, 10, 0)
 
     def pilates():
-        service.schedule_class("cls-test", "Пілатес", "trainer-olena", start, start + timedelta(hours=1), 3)
+        service.schedule_class(
+            "cls-test", "Пілатес", "trainer-olena", start, start + timedelta(hours=1), 3
+        )
 
     if state == "немає занять":
         return
@@ -44,10 +48,16 @@ def prepare_state(service: BookingService, state: str) -> None:
         raise AssertionError(f"Невідомий стан провайдера: {state}")
 
 
-def send(url: str, method: str, path: str, body: dict | None) -> tuple[int, dict]:
+def send(
+    url: str, method: str, path: str, body: dict | None, headers: dict
+) -> tuple[int, dict]:
     data = None if body is None else json.dumps(body).encode()
-    request = urllib.request.Request(url + path, data=data, method=method,
-                                     headers={"Content-Type": "application/json"})
+    request = urllib.request.Request(
+        url + path,
+        data=data,
+        method=method,
+        headers={"Content-Type": "application/json", **headers},
+    )
     try:
         with urllib.request.urlopen(request, timeout=5) as response:
             return response.status, json.loads(response.read())
@@ -60,11 +70,22 @@ def test_provider_honours_client_expectations(interaction):
     service = build_service(clock=lambda: NOW)
     prepare_state(service, interaction["provider_state"])
 
-    with running_app(create_app(service)) as url:
+    with running_app(create_app(service, verifier())) as url:
         req = interaction["request"]
-        status, body = send(url, req["method"], req["path"], req.get("body"))
+        who = interaction["auth"]
+        status, body = send(
+            url,
+            req["method"],
+            req["path"],
+            req.get("body"),
+            auth(who["sub"], who["role"]),
+        )
 
     expected = interaction["response"]
-    problems = [] if status == expected["status"] else [f"статус {status}, очікувався {expected['status']}"]
+    problems = (
+        []
+        if status == expected["status"]
+        else [f"статус {status}, очікувався {expected['status']}"]
+    )
     problems += check_body(body, expected["body"])
     assert not problems, f"«{interaction['description']}»: " + "; ".join(problems)

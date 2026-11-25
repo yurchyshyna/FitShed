@@ -1,7 +1,7 @@
 {
   "consumer": "fitshed-scenario-client",
   "provider": "fitshed-booking-api",
-  "description": "Очікування клієнта (fitshed.api.client) щодо Booking API. Перевіряються лише поля, які клієнт справді читає. Зайві поля провайдера дозволені.",
+  "description": "Очікування клієнта (fitshed.api.client) щодо Booking API. Перевіряються лише поля, які клієнт справді читає. Зайві поля провайдера дозволені. Кожна взаємодія виконується від імені користувача з поля auth: клієнт надсилає Authorization: Bearer <токен>, провайдер перевіряє токен і права.",
   "matching_rules": {
     "type": "значення має цей JSON-тип (string, integer, array, null)",
     "equals": "значення має точно дорівнювати вказаному",
@@ -12,6 +12,10 @@
       "id": "create-class",
       "description": "створення заняття",
       "provider_state": "немає занять",
+      "auth": {
+        "sub": "trainer-olena",
+        "role": "trainer"
+      },
       "client_call": {
         "method": "create_class",
         "args": {
@@ -61,6 +65,10 @@
       "id": "get-class",
       "description": "читання заняття з одним записом",
       "provider_state": "заняття cls-test на 3 місця, записана anna",
+      "auth": {
+        "sub": "trainer-olena",
+        "role": "trainer"
+      },
       "client_call": {
         "method": "get_class",
         "args": {
@@ -99,6 +107,10 @@
       "id": "book-free-place",
       "description": "запис клієнта на вільне місце",
       "provider_state": "заняття cls-test на 3 місця без записів",
+      "auth": {
+        "sub": "anna",
+        "role": "client"
+      },
       "client_call": {
         "method": "book",
         "args": {
@@ -132,6 +144,10 @@
       "id": "book-full-class",
       "description": "запис на заповнене заняття потрапляє в лист очікування",
       "provider_state": "заповнене заняття cls-test на 3 місця",
+      "auth": {
+        "sub": "halyna",
+        "role": "client"
+      },
       "client_call": {
         "method": "book",
         "args": {
@@ -165,6 +181,10 @@
       "id": "cancel-class",
       "description": "скасування заняття",
       "provider_state": "заняття cls-test на 3 місця, записана anna",
+      "auth": {
+        "sub": "trainer-olena",
+        "role": "trainer"
+      },
       "client_call": {
         "method": "cancel_class",
         "args": {
@@ -209,6 +229,10 @@
       "id": "book-cancelled-class",
       "description": "запис на скасоване заняття відхиляється",
       "provider_state": "скасоване заняття cls-test",
+      "auth": {
+        "sub": "dmytro",
+        "role": "client"
+      },
       "client_call": {
         "method": "book",
         "args": {
@@ -240,6 +264,10 @@
       "id": "get-missing-class",
       "description": "читання неіснуючого заняття",
       "provider_state": "немає занять",
+      "auth": {
+        "sub": "trainer-olena",
+        "role": "trainer"
+      },
       "client_call": {
         "method": "get_class",
         "args": {

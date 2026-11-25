@@ -8,6 +8,7 @@
 Сховище — адаптер у пам'яті з ЛР 2, тому після зупинки дані зникають.
 Сервер працює з одним процесом (workers = 1): кілька процесів мали б окремі сховища в пам'яті.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,10 +20,14 @@ import uvicorn
 from fitshed.booking.adapters.in_memory import InMemoryGroupClassRepository
 from fitshed.booking.application.booking_service import BookingService
 
+from fitshed.auth.tokens import AuthConfig, TokenVerifier
+
 from .app import create_app
 
 
-def build_service(clock: Callable[[], datetime] = datetime.now, repo=None) -> BookingService:
+def build_service(
+    clock: Callable[[], datetime] = datetime.now, repo=None
+) -> BookingService:
     return BookingService(repo or InMemoryGroupClassRepository(), clock)
 
 
@@ -30,8 +35,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Локальний сервер FitShed Booking API")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-    print(f"FitShed Booking API: http://127.0.0.1:{args.port}  (документація: /docs, Ctrl+C — зупинити)")
-    uvicorn.run(create_app(build_service()), host="127.0.0.1", port=args.port, workers=1)
+    print(
+        f"FitShed Booking API: http://127.0.0.1:{args.port}  (документація: /docs, Ctrl+C — зупинити)"
+    )
+    verifier = TokenVerifier(
+        AuthConfig.from_env()
+    )  # відкритий ключ з backend/var/keys або FITSHED_JWT_PUBLIC_KEY
+    # 127.0.0.1: стенд доступний лише з цього комп'ютера (loopback); для віддаленого доступу потрібен TLS
+    uvicorn.run(
+        create_app(build_service(), verifier),
+        host="127.0.0.1",
+        port=args.port,
+        workers=1,
+    )
 
 
 if __name__ == "__main__":

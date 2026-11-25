@@ -8,9 +8,17 @@ info:
     змінюють заняття лише через цей контракт, а не через його сховище.
 
     Час у форматі ISO 8601 без часового поясу (локальний час клубу).
+
+    Доступ (ЛР 8): кожна операція вимагає access token (JWT, RS256) у заголовку
+    Authorization: Bearer. Права залежать від ролі (admin, trainer, client) і від того,
+    чи належить заняття / запис користувачу. 401 — немає або невалідний токен,
+    403 — немає права на операцію чи на конкретне заняття.
 servers:
   - url: http://127.0.0.1:8000
     description: Локальний сервер для лабораторної роботи
+
+security:
+  - bearerAuth: []
 
 paths:
   /classes:
@@ -20,6 +28,7 @@ paths:
       description: |
         Метод POST, бо ідентифікатор нового заняття призначає сервер.
         201 Created — заняття створено одразу й повністю; адреса нового ресурсу в заголовку Location.
+        Доступ: admin — будь-яке заняття; trainer — лише з trainer_id, що дорівнює його sub.
       requestBody:
         required: true
         content:
@@ -44,6 +53,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/GroupClass' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /classes/{class_id}:
     parameters:
@@ -51,13 +62,18 @@ paths:
     get:
       operationId: getClass
       summary: Отримати заняття з поточним станом
-      description: Метод GET — безпечне читання без зміни стану. 200 OK з представленням ресурсу.
+      description: |
+        Метод GET — безпечне читання без зміни стану. 200 OK з представленням ресурсу.
+        Доступ: усі ролі. Списки booked і waitlist повністю бачать лише admin і тренер цього заняття;
+        іншим у списках показано лише їх самих.
       responses:
         '200':
           description: Поточний стан заняття
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GroupClass' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /classes/{class_id}/bookings:
@@ -71,6 +87,7 @@ paths:
         201 Created — запис уже створено синхронно: клієнт або займає місце (result = booked),
         або потрапляє в лист очікування (result = waitlisted).
         409 Conflict — клієнт уже записаний, заняття скасоване, завершене чи вже почалося.
+        Доступ: client — лише себе (client_id = sub); admin — будь-кого; trainer — заборонено.
       requestBody:
         required: true
         content:
@@ -85,6 +102,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Booking' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
@@ -101,6 +120,7 @@ paths:
         200 OK — стан змінено синхронно, у відповіді оновлене заняття.
         Сповіщення записаним клієнтам надсилаються пізніше воркером і цією відповіддю не гарантуються.
         409 Conflict — заняття вже скасоване або завершене.
+        Доступ: trainer — лише власне заняття (trainer_id = sub); admin — будь-яке; client — заборонено.
       requestBody:
         required: true
         content:
@@ -115,10 +135,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/GroupClass' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token від емітента fitshed-local-issuer для аудиторії fitshed-booking-api,
+        підписаний RS256. Обов'язкові поля: iss, aud, sub, role, iat, exp.
+
   parameters:
     ClassId:
       name: class_id
@@ -200,7 +231,7 @@ components:
         status: { type: integer, example: 409 }
         code:
           type: string
-          enum: [invalid_input, not_found, invalid_state, rule_violation]
+          enum: [invalid_input, unauthorized, forbidden, not_found, invalid_state, rule_violation]
         title: { type: string }
         detail: { type: string }
 
@@ -215,6 +246,29 @@ components:
             code: invalid_input
             title: Некоректні вхідні дані
             detail: Кінець заняття має бути пізніше за початок
+    Unauthorized:
+      description: Access token відсутній, пошкоджений, прострочений або виданий іншим емітентом чи для іншої аудиторії
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: 'Bearer error="invalid_token"' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 401
+            code: unauthorized
+            title: Потрібна автентифікація
+            detail: "Access token відсутній або невалідний: строк дії токена минув"
+    Forbidden:
+      description: Користувач автентифікований, але не має права на операцію або на це заняття
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 403
+            code: forbidden
+            title: Доступ заборонено
+            detail: тренер може скасовувати лише власні заняття
     NotFound:
       description: Заняття не знайдено
       content:

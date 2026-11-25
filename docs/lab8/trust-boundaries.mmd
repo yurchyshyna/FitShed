@@ -1,0 +1,35 @@
+%% Межі довіри та місця перевірки прав (ЛР 8)
+flowchart LR
+  user["<b>Користувач</b><br/>admin / trainer / client<br/>отримує access token"]
+  issuer["<b>Навчальний емітент</b><br/>python -m fitshed.auth.issue<br/>🔑 закритий ключ RS256<br/>(backend/var/keys, поза Git)"]
+
+  subgraph B1 ["Межа довіри 1: локальний комп'ютер (loopback 127.0.0.1)"]
+    direction LR
+    gw["<b>API Gateway</b> :8080<br/>rate limit, request_id,<br/>таймаути, повтори, breaker<br/><i>права НЕ перевіряє,<br/>Authorization передає без змін</i>"]
+
+    subgraph B2 ["Межа довіри 2: власник даних"]
+      direction TB
+      authn["<b>① Автентифікація</b><br/>JWT: alg = RS256, підпис,<br/>iss, aud, exp, sub, role<br/>→ 401"]
+      authz["<b>② Авторизація</b> authz.py<br/>роль + володіння об'єктом<br/>(trainer_id = sub, client_id = sub)<br/>→ 403"]
+      domain["Доменне ядро<br/>GroupClass<br/>(бізнес-правила → 400/409)"]
+      authn --> authz --> domain
+    end
+    stub["Сервіс абонементів :8001<br/>(заглушка, без автентифікації —<br/>ризик R5)"]
+  end
+
+  user -- "1. отримати токен" --> issuer
+  issuer -. "відкритий ключ<br/>(backend/var/keys/jwt-public.pem)" .-> authn
+  user -- "2. Authorization: Bearer …<br/>HTTP на loopback;<br/>для віддаленого доступу — TLS" --> gw
+  gw -- "/api/classes/** + Authorization" --> authn
+  gw -- "/api/clients/** " --> stub
+
+  classDef trust fill:#1f7a72,stroke:#0b4f4a,color:#ffffff
+  classDef check fill:#c9822b,stroke:#8a5717,color:#ffffff
+  classDef ext fill:#6b8f8b,stroke:#3f615d,color:#ffffff
+  classDef person fill:#0b4f4a,stroke:#06302d,color:#ffffff
+  class gw,domain trust
+  class authn,authz check
+  class stub,issuer ext
+  class user person
+  style B1 fill:#f5f7f7,stroke:#6b8f8b,stroke-dasharray: 6 4,color:#0b4f4a
+  style B2 fill:#fdf3e7,stroke:#c9822b,stroke-dasharray: 6 4,color:#8a5717
