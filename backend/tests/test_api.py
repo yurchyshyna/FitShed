@@ -1,4 +1,4 @@
-"""Поведінка HTTP API через справжній локальний сервер (ЛР 5)."""
+"""Поведінка HTTP API (FastAPI) через справжній сервер uvicorn (ЛР 5)."""
 import json
 import urllib.error
 import urllib.request
@@ -7,8 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from contract_support import running
-from fitshed.api.server import build_api, make_handler
+from contract_support import running_app
+from fitshed.api.app import create_app
+from fitshed.api.server import build_service
 
 NOW = datetime(2026, 12, 1, 9, 0)
 PILATES = {"title": "Пілатес", "trainer_id": "trainer-olena",
@@ -21,14 +22,19 @@ def call(url, method, path, body=None, raw: bytes | None = None):
                                      headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(request, timeout=5) as r:
-            return r.status, dict(r.headers), json.loads(r.read())
+            return r.status, r.headers, json.loads(r.read())
     except urllib.error.HTTPError as e:
-        return e.code, dict(e.headers), json.loads(e.read())
+        return e.code, e.headers, json.loads(e.read())
 
 
 @pytest.fixture
-def url():
-    with running(make_handler(build_api(clock=lambda: NOW), quiet=True)) as base:
+def app():
+    return create_app(build_service(clock=lambda: NOW))
+
+
+@pytest.fixture
+def url(app):
+    with running_app(app) as base:
         yield base
 
 
@@ -118,8 +124,14 @@ def test_double_booking_is_rule_violation(url):
 
 
 def test_wrong_method_returns_405(url):
-    status, headers, _ = call(url, "DELETE", "/classes/cls-1")
-    assert status == 405 and headers["Allow"] == "GET"
+    status, headers, problem = call(url, "DELETE", "/classes/cls-1")
+    assert status == 405 and "GET" in headers["Allow"]
+    assert headers["Content-Type"].startswith("application/problem+json")
+
+
+def test_unknown_path_returns_problem_404(url):
+    status, _, problem = call(url, "GET", "/trainers")
+    assert status == 404 and problem["code"] == "not_found"
 
 
 # ---------- відповіді відповідають схемам OpenAPI ----------
@@ -152,3 +164,20 @@ def test_every_operation_documents_success_and_errors():
             codes = set(op["responses"])
             assert codes & {"200", "201", "202"}, f"{method.upper()} {path}: немає успішної відповіді"
             assert codes & {"400", "404", "409"}, f"{method.upper()} {path}: немає опису помилок"
+
+
+def test_routes_match_openapi_contract(app):
+    """Маршрути й коди відповідей FastAPI збігаються з контрактом openapi.yaml."""
+    yaml = pytest.importorskip("yaml")
+    contract = yaml.safe_load((Path(__file__).parents[1] / "openapi.yaml").read_text(encoding="utf-8"))
+    generated = app.openapi()
+
+    def operations(spec):
+        return {(path, method): {code for code in op["responses"] if code != "422"}
+                for path, item in spec["paths"].items()
+                for method, op in item.items() if method in {"get", "post", "put", "patch", "delete"}}
+
+    implemented, documented = operations(generated), operations(contract)
+    assert set(implemented) == set(documented), "шляхи або методи розходяться з openapi.yaml"
+    for key, codes in documented.items():
+        assert codes == implemented[key], f"{key}: у контракті {sorted(codes)}, у застосунку {sorted(implemented[key])}"

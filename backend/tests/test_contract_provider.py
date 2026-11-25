@@ -1,7 +1,7 @@
 """Контрактна перевірка на боці провайдера.
 
 Ті самі взаємодії з файлу очікувань відтворюються на СПРАВЖНЬОМУ сервері
-(HTTP-адаптер + BookingService + доменне ядро + сховище в пам'яті).
+(FastAPI + uvicorn + BookingService + доменне ядро + сховище в пам'яті).
 Для кожної взаємодії спершу готується стан провайдера (provider_state).
 """
 import json
@@ -11,9 +11,9 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from contract_support import check_body, interactions, running
-from fitshed.api.server import build_api, make_handler
-from fitshed.booking.adapters.in_memory import InMemoryGroupClassRepository
+from contract_support import check_body, interactions, running_app
+from fitshed.api.app import create_app
+from fitshed.api.server import build_service
 from fitshed.booking.application.booking_service import BookingService
 
 NOW = datetime(2026, 12, 1, 9, 0)
@@ -57,12 +57,10 @@ def send(url: str, method: str, path: str, body: dict | None) -> tuple[int, dict
 
 @pytest.mark.parametrize("interaction", interactions(), ids=lambda i: i["id"])
 def test_provider_honours_client_expectations(interaction):
-    repo = InMemoryGroupClassRepository()
-    service = BookingService(repo, clock=lambda: NOW)
+    service = build_service(clock=lambda: NOW)
     prepare_state(service, interaction["provider_state"])
-    api = build_api(clock=lambda: NOW, repo=repo)
 
-    with running(make_handler(api, quiet=True)) as url:
+    with running_app(create_app(service)) as url:
         req = interaction["request"]
         status, body = send(url, req["method"], req["path"], req.get("body"))
 

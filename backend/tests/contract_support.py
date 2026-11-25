@@ -1,9 +1,11 @@
 """Спільні засоби для контрактних перевірок (ЛР 5): читання файлу очікувань,
-порівняння відповіді з правилами, запуск HTTP-сервера у фоновому потоці."""
+порівняння відповіді з правилами, запуск тестової заглушки (http.server)
+та справжнього застосунку FastAPI (uvicorn) у фоновому потоці."""
 from __future__ import annotations
 
 import json
 import threading
+import time
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -56,3 +58,25 @@ def running(handler_class: type[BaseHTTPRequestHandler]):
     finally:
         server.shutdown()
         server.server_close()
+
+
+@contextmanager
+def running_app(app):
+    """Запускає ASGI-застосунок (FastAPI) справжнім сервером uvicorn на вільному порту."""
+    import uvicorn
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning", lifespan="off")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 10
+    while not server.started:
+        if not thread.is_alive() or time.monotonic() > deadline:
+            raise RuntimeError("uvicorn не запустився")
+        time.sleep(0.01)
+    port = server.servers[0].sockets[0].getsockname()[1]
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
